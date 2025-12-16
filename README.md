@@ -2,6 +2,11 @@
 
 Полнофункциональный serverless backend на Parse Cloud Code с реферальной программой и Telegram-ботом.
 
+## 🚀 Быстрый старт
+
+- **[QUICKSTART.md](QUICKSTART.md)** - Быстрый старт за 15 минут
+- **[DEPLOYMENT_GUIDE.md](DEPLOYMENT_GUIDE.md)** - Подробная инструкция по развёртыванию
+
 ## Возможности
 
 - Управление цифровыми товарами
@@ -16,13 +21,19 @@
 ```
 .
 ├── cloud/
-│   ├── main.js         # Точка входа Cloud Code
-│   ├── config.js       # Конфигурация (ENV)
-│   ├── models.js       # Модели данных и бизнес-логика
-│   ├── api.js          # Cloud Functions (API)
-│   └── telegram.js     # Telegram Bot логика
-├── ARCHITECTURE.md     # Архитектура системы
-├── DATA_SCHEMA.md      # Схема данных
+│   ├── main.js                # Точка входа Cloud Code
+│   ├── config.js              # Конфигурация (ENV)
+│   ├── models.js              # Модели данных и бизнес-логика
+│   ├── api.js                 # Cloud Functions (API)
+│   └── telegram.js            # Telegram Bot логика
+├── scripts/
+│   ├── setup-telegram-webhook.sh  # Настройка Telegram webhook
+│   └── test-api.sh            # Тестирование API
+├── QUICKSTART.md              # Быстрый старт (15 минут)
+├── DEPLOYMENT_GUIDE.md        # Подробная инструкция
+├── ARCHITECTURE.md            # Архитектура системы
+├── DATA_SCHEMA.md             # Схема данных
+├── example-frontend.html      # Пример фронтенда
 ├── package.json
 └── .env.example
 ```
