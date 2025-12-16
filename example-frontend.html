@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Digital Goods Store - Example</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      max-width: 800px;
+      margin: 50px auto;
+      padding: 20px;
+      background: #f5f5f5;
+    }
+    .product {
+      background: white;
+      padding: 20px;
+      margin: 10px 0;
+      border-radius: 8px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    button {
+      background: #007bff;
+      color: white;
+      border: none;
+      padding: 10px 20px;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 16px;
+    }
+    button:hover {
+      background: #0056b3;
+    }
+    .result {
+      background: #d4edda;
+      border: 1px solid #c3e6cb;
+      color: #155724;
+      padding: 15px;
+      margin: 10px 0;
+      border-radius: 4px;
+    }
+    .error {
+      background: #f8d7da;
+      border: 1px solid #f5c6cb;
+      color: #721c24;
+      padding: 15px;
+      margin: 10px 0;
+      border-radius: 4px;
+    }
+    .config {
+      background: #fff3cd;
+      border: 1px solid #ffeaa7;
+      padding: 15px;
+      margin: 20px 0;
+      border-radius: 4px;
+    }
+    input {
+      width: 100%;
+      padding: 8px;
+      margin: 5px 0;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+    }
+  </style>
+</head>
+<body>
+  <h1>🛒 Digital Goods Store - Example</h1>
+
+  <div class="config">
+    <h3>⚙️ Настройки API</h3>
+    <label>Parse Server URL:</label>
+    <input type="text" id="parseServerUrl" value="https://parseapi.back4app.com" />
+
+    <label>Application ID:</label>
+    <input type="text" id="appId" placeholder="YOUR_APP_ID" />
+
+    <label>Реферальный код (опционально):</label>
+    <input type="text" id="refCode" placeholder="PARTNER_ABC123" />
+  </div>
+
+  <div id="products"></div>
+  <div id="result"></div>
+
+  <script>
+    // Конфигурация
+    const CONFIG = {
+      get parseServerUrl() {
+        return document.getElementById('parseServerUrl').value;
+      },
+      get appId() {
+        return document.getElementById('appId').value;
+      },
+      get refCode() {
+        return document.getElementById('refCode').value;
+      }
+    };
+
+    // Утилита для API запросов
+    async function callCloudFunction(functionName, params = {}) {
+      const url = `${CONFIG.parseServerUrl}/parse/functions/${functionName}`;
+
+      const response = await fetch(url, {
+        method: 'POST',
+        headers: {
+          'X-Parse-Application-Id': CONFIG.appId,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(params)
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'API Error');
+      }
+
+      return data.result;
+    }
+
+    // Показать результат
+    function showResult(message, isError = false) {
+      const resultDiv = document.getElementById('result');
+      resultDiv.className = isError ? 'error' : 'result';
+      resultDiv.innerHTML = `<pre>${JSON.stringify(message, null, 2)}</pre>`;
+    }
+
+    // Загрузить товары
+    async function loadProducts() {
+      try {
+        const data = await callCloudFunction('getProducts');
+        displayProducts(data.products);
+      } catch (error) {
+        showResult({ error: error.message }, true);
+      }
+    }
+
+    // Отобразить товары
+    function displayProducts(products) {
+      const container = document.getElementById('products');
+      container.innerHTML = '<h2>📦 Товары</h2>';
+
+      products.forEach(product => {
+        const div = document.createElement('div');
+        div.className = 'product';
+        div.innerHTML = `
+          <h3>${product.name}</h3>
+          <p><strong>Цена:</strong> ${product.price} ${product.currency}</p>
+          <p><strong>Тип:</strong> ${product.type}</p>
+          <button onclick="buyProduct('${product.productId}')">Купить</button>
+        `;
+        container.appendChild(div);
+      });
+    }
+
+    // Купить товар
+    async function buyProduct(productId) {
+      try {
+        // 1. Создать заказ
+        const orderData = await callCloudFunction('createOrder', {
+          productId: productId,
+          partnerCode: CONFIG.refCode || undefined,
+          customerEmail: 'test@example.com'
+        });
+
+        showResult({ step: 1, message: 'Заказ создан', order: orderData.order });
+
+        // 2. Тестовая оплата
+        const paymentKey = `payment_${Date.now()}_${Math.random()}`;
+
+        const paymentData = await callCloudFunction('confirmTestPayment', {
+          orderId: orderData.order.orderId,
+          paymentIdempotencyKey: paymentKey
+        });
+
+        showResult({
+          step: 2,
+          message: 'Оплата успешна',
+          order: paymentData.order,
+          payload: paymentData.payload,
+          alreadyPaid: paymentData.alreadyPaid
+        });
+
+        alert(`✅ Покупка успешна!\n\n${paymentData.payload}`);
+
+      } catch (error) {
+        showResult({ error: error.message }, true);
+      }
+    }
+
+    // Загрузить товары при загрузке страницы
+    window.addEventListener('DOMContentLoaded', () => {
+      // Проверить реферальный код в URL
+      const urlParams = new URLSearchParams(window.location.search);
+      const ref = urlParams.get('ref');
+      if (ref) {
+        document.getElementById('refCode').value = ref;
+        localStorage.setItem('refCode', ref);
+      } else {
+        const savedRef = localStorage.getItem('refCode');
+        if (savedRef) {
+          document.getElementById('refCode').value = savedRef;
+        }
+      }
+
+      // Загрузить товары через 500ms (чтобы пользователь успел ввести App ID)
+      setTimeout(() => {
+        if (CONFIG.appId) {
+          loadProducts();
+        }
+      }, 500);
+    });
+  </script>
+</body>
+</html>

@@ -1,0 +1,26 @@
+{
+  "name": "digital-goods-serverless",
+  "version": "1.0.0",
+  "description": "Serverless backend for digital goods with referral program and Telegram bot",
+  "main": "cloud/main.js",
+  "scripts": {
+    "test": "echo \"No tests yet\"",
+    "deploy": "echo \"Deploy to your Parse Server platform\""
+  },
+  "keywords": [
+    "parse",
+    "serverless",
+    "cloud-code",
+    "telegram-bot",
+    "digital-goods",
+    "referral"
+  ],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "parse": "^3.4.4"
+  },
+  "engines": {
+    "node": ">=14.0.0"
+  }
+}
