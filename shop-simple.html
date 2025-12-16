@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Магазин - Тест покупки</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      max-width: 600px;
+      margin: 50px auto;
+      padding: 20px;
+      background: #f5f5f5;
+    }
+    .product {
+      background: white;
+      padding: 20px;
+      margin: 20px 0;
+      border-radius: 8px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    button {
+      background: #28a745;
+      color: white;
+      border: none;
+      padding: 15px 30px;
+      border-radius: 5px;
+      cursor: pointer;
+      font-size: 18px;
+      width: 100%;
+      margin-top: 10px;
+    }
+    button:hover {
+      background: #218838;
+    }
+    .result {
+      background: #d4edda;
+      border: 1px solid #c3e6cb;
+      color: #155724;
+      padding: 15px;
+      margin: 20px 0;
+      border-radius: 5px;
+      display: none;
+    }
+    .loading {
+      text-align: center;
+      color: #666;
+      padding: 20px;
+      display: none;
+    }
+    h1 { color: #333; }
+    .price {
+      font-size: 24px;
+      color: #28a745;
+      font-weight: bold;
+    }
+  </style>
+</head>
+<body>
+  <h1>🛒 Магазин цифровых товаров</h1>
+
+  <div class="loading" id="loading">⏳ Загрузка...</div>
+
+  <div id="products"></div>
+
+  <div class="result" id="result"></div>
+
+  <script>
+    // ВАШИ КЛЮЧИ (уже вставлены!)
+    const CONFIG = {
+      parseUrl: "https://parseapi.back4app.com",
+      appId: "dMzX2vukXJp8aCS9xLzoGw6GkuTZYbhzQMhVrdCf",
+      clientKey: "C07cRRRiFOrApuLkkA39XFa0Xq6B5OhKzerMIOMT"
+    };
+
+    // Вызов Cloud Function
+    async function callAPI(functionName, params = {}) {
+      const response = await fetch(`${CONFIG.parseUrl}/parse/functions/${functionName}`, {
+        method: 'POST',
+        headers: {
+          'X-Parse-Application-Id': CONFIG.appId,
+          'X-Parse-Client-Key': CONFIG.clientKey,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(params)
+      });
+
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || 'API Error');
+      return data.result;
+    }
+
+    // Показать результат
+    function showResult(message, success = true) {
+      const resultDiv = document.getElementById('result');
+      resultDiv.style.display = 'block';
+      resultDiv.style.background = success ? '#d4edda' : '#f8d7da';
+      resultDiv.style.borderColor = success ? '#c3e6cb' : '#f5c6cb';
+      resultDiv.style.color = success ? '#155724' : '#721c24';
+      resultDiv.innerHTML = message;
+
+      // Прокрутить к результату
+      resultDiv.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }
+
+    // Показать загрузку
+    function showLoading(show) {
+      document.getElementById('loading').style.display = show ? 'block' : 'none';
+    }
+
+    // ГЛАВНАЯ ФУНКЦИЯ - КУПИТЬ ТОВАР
+    async function buyProduct(productId, productName, price) {
+      try {
+        showLoading(true);
+        showResult('⏳ Обрабатываем заказ...', true);
+
+        // Шаг 1: Создать заказ
+        console.log('1. Создаём заказ...');
+        const orderData = await callAPI('createOrder', {
+          productId: productId,
+          customerEmail: 'test@example.com'
+        });
+
+        console.log('Заказ создан:', orderData);
+
+        // Шаг 2: Оплатить заказ
+        console.log('2. Оплачиваем...');
+        const paymentKey = `payment_${Date.now()}_${Math.random()}`;
+        const paymentData = await callAPI('confirmTestPayment', {
+          orderId: orderData.order.orderId,
+          paymentIdempotencyKey: paymentKey
+        });
+
+        console.log('Оплата успешна:', paymentData);
+
+        // Шаг 3: Показать результат
+        showLoading(false);
+        showResult(`
+          <h2>✅ Покупка успешна!</h2>
+          <p><strong>Товар:</strong> ${productName}</p>
+          <p><strong>Цена:</strong> ${price} RUB</p>
+          <p><strong>Заказ:</strong> ${paymentData.order.orderId}</p>
+          <hr>
+          <h3>🎁 Ваш товар:</h3>
+          <p style="font-size: 18px; background: #fff3cd; padding: 15px; border-radius: 5px;">
+            ${paymentData.payload}
+          </p>
+        `, true);
+
+      } catch (error) {
+        showLoading(false);
+        showResult(`
+          <h2>❌ Ошибка</h2>
+          <p>${error.message}</p>
+        `, false);
+      }
+    }
+
+    // Загрузить товары при открытии страницы
+    async function loadProducts() {
+      try {
+        showLoading(true);
+        const data = await callAPI('getProducts');
+        const container = document.getElementById('products');
+
+        container.innerHTML = '<h2>📦 Наши товары:</h2>';
+
+        data.products.forEach(product => {
+          const div = document.createElement('div');
+          div.className = 'product';
+          div.innerHTML = `
+            <h3>${product.name}</h3>
+            <p class="price">${product.price} RUB</p>
+            <p>Тип: ${product.type === 'digital' ? '💾 Цифровой' : '📦 Товар'}</p>
+            <button onclick="buyProduct('${product.productId}', '${product.name}', ${product.price})">
+              🛒 Купить за ${product.price} RUB
+            </button>
+          `;
+          container.appendChild(div);
+        });
+
+        showLoading(false);
+      } catch (error) {
+        showLoading(false);
+        showResult(`
+          <h2>❌ Ошибка загрузки товаров</h2>
+          <p>${error.message}</p>
+          <p><small>Проверьте, что Cloud Code развернут на Back4App</small></p>
+        `, false);
+      }
+    }
+
+    // Запустить при загрузке страницы
+    window.addEventListener('DOMContentLoaded', loadProducts);
+  </script>
+</body>
+</html>
