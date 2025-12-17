@@ -1,0 +1,356 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Дашборд - Партнёрский кабинет</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="container">
+    <div class="dashboard">
+      <div class="dashboard-header">
+        <h1>📊 Партнёрский кабинет</h1>
+        <div class="user-info">
+          <div id="userName"></div>
+          <button onclick="API.logout()" class="btn btn-sm">Выход</button>
+        </div>
+      </div>
+
+      <!-- Статистика -->
+      <div class="stats-grid" id="stats">
+        <!-- Заполнится автоматически -->
+      </div>
+
+      <!-- Реферальная ссылка -->
+      <div class="referral-box">
+        <h3>🔗 Ваша реферальная ссылка</h3>
+        <div class="referral-link">
+          <input type="text" id="referralUrl" readonly>
+          <button onclick="copyReferralLink()" class="btn btn-primary">Копировать</button>
+        </div>
+      </div>
+
+      <!-- Действия -->
+      <div style="display: flex; gap: 10px; margin-bottom: 30px;">
+        <button onclick="showPaymentDetailsModal()" class="btn btn-success">💳 Реквизиты для выплат</button>
+        <button onclick="showWithdrawalModal()" class="btn btn-primary">💰 Заявка на вывод</button>
+      </div>
+
+      <!-- Последние продажи -->
+      <div>
+        <h2>📦 Последние продажи</h2>
+        <table class="table" id="ordersTable">
+          <thead>
+            <tr>
+              <th>Дата</th>
+              <th>Заказ</th>
+              <th>Товар</th>
+              <th>Сумма</th>
+            </tr>
+          </thead>
+          <tbody id="ordersBody">
+            <!-- Заполнится автоматически -->
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Заявки на вывод -->
+      <div style="margin-top: 30px;">
+        <h2>💸 Заявки на вывод</h2>
+        <table class="table" id="withdrawalsTable">
+          <thead>
+            <tr>
+              <th>Дата</th>
+              <th>Номер</th>
+              <th>Сумма</th>
+              <th>Статус</th>
+            </tr>
+          </thead>
+          <tbody id="withdrawalsBody">
+            <!-- Заполнится автоматически -->
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- Модальное окно: Реквизиты -->
+  <div id="paymentDetailsModal" class="modal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h2>💳 Реквизиты для выплат</h2>
+        <button class="close-modal" onclick="closeModal('paymentDetailsModal')">&times;</button>
+      </div>
+      <form onsubmit="savePaymentDetails(event)">
+        <div class="form-group">
+          <label>Способ выплаты:</label>
+          <select id="paymentMethod" required onchange="updatePaymentFields()">
+            <option value="">Выберите...</option>
+            <option value="card">Банковская карта</option>
+            <option value="bank">Банковский счёт</option>
+            <option value="paypal">PayPal</option>
+            <option value="crypto">Криптовалюта</option>
+          </select>
+        </div>
+
+        <!-- Поля для карты -->
+        <div id="cardFields" style="display: none;">
+          <div class="form-group">
+            <label>Номер карты:</label>
+            <input type="text" id="cardNumber" placeholder="1234 5678 9012 3456">
+          </div>
+          <div class="form-group">
+            <label>Имя держателя:</label>
+            <input type="text" id="cardHolder" placeholder="IVAN IVANOV">
+          </div>
+        </div>
+
+        <!-- Поля для банковского счёта -->
+        <div id="bankFields" style="display: none;">
+          <div class="form-group">
+            <label>Название банка:</label>
+            <input type="text" id="bankName">
+          </div>
+          <div class="form-group">
+            <label>Номер счёта:</label>
+            <input type="text" id="accountNumber">
+          </div>
+          <div class="form-group">
+            <label>БИК:</label>
+            <input type="text" id="bik">
+          </div>
+        </div>
+
+        <!-- Поля для PayPal -->
+        <div id="paypalFields" style="display: none;">
+          <div class="form-group">
+            <label>PayPal Email:</label>
+            <input type="email" id="paypalEmail">
+          </div>
+        </div>
+
+        <!-- Поля для крипты -->
+        <div id="cryptoFields" style="display: none;">
+          <div class="form-group">
+            <label>Крипто-адрес:</label>
+            <input type="text" id="cryptoAddress">
+          </div>
+        </div>
+
+        <button type="submit" class="btn btn-primary">Сохранить</button>
+      </form>
+    </div>
+  </div>
+
+  <!-- Модальное окно: Заявка на вывод -->
+  <div id="withdrawalModal" class="modal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h2>💰 Заявка на вывод</h2>
+        <button class="close-modal" onclick="closeModal('withdrawalModal')">&times;</button>
+      </div>
+      <div id="availableBalanceInfo" style="background: #f8f9fa; padding: 15px; border-radius: 6px; margin-bottom: 20px;">
+        Доступно для вывода: <strong id="availableBalanceValue">0</strong> RUB
+      </div>
+      <form onsubmit="createWithdrawal(event)">
+        <div class="form-group">
+          <label>Сумма вывода (RUB):</label>
+          <input type="number" id="withdrawalAmount" required min="1" step="0.01">
+        </div>
+        <button type="submit" class="btn btn-primary">Создать заявку</button>
+      </form>
+    </div>
+  </div>
+
+  <script src="config.js"></script>
+  <script src="api.js"></script>
+  <script>
+    let dashboardData = null;
+
+    // Проверка авторизации
+    if (!API.isAuthenticated()) {
+      window.location.href = 'index.html';
+    }
+
+    // Загрузка данных
+    async function loadDashboard() {
+      try {
+        dashboardData = await API.getDashboard();
+        renderDashboard();
+      } catch (error) {
+        alert('Ошибка загрузки: ' + error.message);
+        API.logout();
+      }
+    }
+
+    // Отрисовка дашборда
+    function renderDashboard() {
+      const { partner, referralUrl, recentOrders, withdrawals } = dashboardData;
+
+      // Имя пользователя
+      document.getElementById('userName').textContent = partner.name;
+
+      // Статистика
+      document.getElementById('stats').innerHTML = `
+        <div class="stat-card">
+          <h3>Продаж</h3>
+          <div class="value">${partner.totalSales}</div>
+        </div>
+        <div class="stat-card">
+          <h3>Оборот</h3>
+          <div class="value">${partner.totalRevenue.toLocaleString()} ₽</div>
+        </div>
+        <div class="stat-card">
+          <h3>Заработано</h3>
+          <div class="value">${partner.totalEarned.toLocaleString()} ₽</div>
+        </div>
+        <div class="stat-card">
+          <h3>Доступно</h3>
+          <div class="value">${partner.availableBalance.toLocaleString()} ₽</div>
+        </div>
+      `;
+
+      // Реферальная ссылка
+      document.getElementById('referralUrl').value = referralUrl;
+
+      // Последние заказы
+      const ordersBody = document.getElementById('ordersBody');
+      if (recentOrders.length === 0) {
+        ordersBody.innerHTML = '<tr><td colspan="4" style="text-align:center">Пока нет продаж</td></tr>';
+      } else {
+        ordersBody.innerHTML = recentOrders.map(o => `
+          <tr>
+            <td>${new Date(o.createdAt).toLocaleDateString('ru-RU')}</td>
+            <td>${o.orderId}</td>
+            <td>${o.productName}</td>
+            <td>${o.total} ${o.currency}</td>
+          </tr>
+        `).join('');
+      }
+
+      // Заявки на вывод
+      const withdrawalsBody = document.getElementById('withdrawalsBody');
+      if (withdrawals.length === 0) {
+        withdrawalsBody.innerHTML = '<tr><td colspan="4" style="text-align:center">Нет заявок</td></tr>';
+      } else {
+        withdrawalsBody.innerHTML = withdrawals.map(w => `
+          <tr>
+            <td>${new Date(w.createdAt).toLocaleDateString('ru-RU')}</td>
+            <td>${w.requestId}</td>
+            <td>${w.amount} RUB</td>
+            <td><span class="badge badge-${getStatusBadge(w.status)}">${getStatusText(w.status)}</span></td>
+          </tr>
+        `).join('');
+      }
+
+      // Обновить доступный баланс в модальном окне
+      document.getElementById('availableBalanceValue').textContent = partner.availableBalance.toLocaleString();
+    }
+
+    function getStatusBadge(status) {
+      const badges = {
+        'pending': 'warning',
+        'approved': 'success',
+        'rejected': 'danger',
+        'paid': 'success'
+      };
+      return badges[status] || 'warning';
+    }
+
+    function getStatusText(status) {
+      const texts = {
+        'pending': 'В обработке',
+        'approved': 'Одобрено',
+        'rejected': 'Отклонено',
+        'paid': 'Выплачено'
+      };
+      return texts[status] || status;
+    }
+
+    function copyReferralLink() {
+      const input = document.getElementById('referralUrl');
+      input.select();
+      document.execCommand('copy');
+      alert('Ссылка скопирована!');
+    }
+
+    function showPaymentDetailsModal() {
+      document.getElementById('paymentDetailsModal').classList.add('active');
+    }
+
+    function showWithdrawalModal() {
+      document.getElementById('withdrawalModal').classList.add('active');
+    }
+
+    function closeModal(modalId) {
+      document.getElementById(modalId).classList.remove('active');
+    }
+
+    function updatePaymentFields() {
+      const method = document.getElementById('paymentMethod').value;
+
+      document.getElementById('cardFields').style.display = method === 'card' ? 'block' : 'none';
+      document.getElementById('bankFields').style.display = method === 'bank' ? 'block' : 'none';
+      document.getElementById('paypalFields').style.display = method === 'paypal' ? 'block' : 'none';
+      document.getElementById('cryptoFields').style.display = method === 'crypto' ? 'block' : 'none';
+    }
+
+    async function savePaymentDetails(event) {
+      event.preventDefault();
+
+      const method = document.getElementById('paymentMethod').value;
+      const details = { paymentMethod: method };
+
+      if (method === 'card') {
+        details.cardNumber = document.getElementById('cardNumber').value;
+        details.cardHolder = document.getElementById('cardHolder').value;
+      } else if (method === 'bank') {
+        details.bankName = document.getElementById('bankName').value;
+        details.accountNumber = document.getElementById('accountNumber').value;
+        details.bik = document.getElementById('bik').value;
+      } else if (method === 'paypal') {
+        details.paypalEmail = document.getElementById('paypalEmail').value;
+      } else if (method === 'crypto') {
+        details.cryptoAddress = document.getElementById('cryptoAddress').value;
+      }
+
+      try {
+        await API.updatePaymentDetails(details);
+        alert('Реквизиты сохранены!');
+        closeModal('paymentDetailsModal');
+      } catch (error) {
+        alert('Ошибка: ' + error.message);
+      }
+    }
+
+    async function createWithdrawal(event) {
+      event.preventDefault();
+
+      const amount = parseFloat(document.getElementById('withdrawalAmount').value);
+
+      if (amount <= 0) {
+        alert('Неверная сумма');
+        return;
+      }
+
+      if (amount > dashboardData.partner.availableBalance) {
+        alert('Недостаточно средств');
+        return;
+      }
+
+      try {
+        await API.createWithdrawal(amount);
+        alert('Заявка создана!');
+        closeModal('withdrawalModal');
+        loadDashboard(); // Перезагрузить данные
+      } catch (error) {
+        alert('Ошибка: ' + error.message);
+      }
+    }
+
+    // Загрузить данные при загрузке страницы
+    loadDashboard();
+  </script>
+</body>
+</html>
